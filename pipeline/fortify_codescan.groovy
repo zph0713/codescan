@@ -1,53 +1,41 @@
-def python = python.isEmpty() ? [] : python.split(",")
-def nodejs = nodejs.isEmpty() ? [] : nodejs.split(",")
-def java = java.isEmpty() ? [] : java.split(",")
-def Cpp = Cpp.isEmpty() ? [] : Cpp.split(",")
-def csharp = csharp.isEmpty() ? [] : csharp.split(",")
-def go = go.isEmpty() ? [] : go.split(",")
-def php = php.isEmpty() ? [] : php.split(",")
 
-
-
+def linuxRepos = LinuxRepos.isEmpty() ? [] : LinuxRepos.split(",")
+def windowsRepos = WindowsRepos.isEmpty() ? [] : WindowsRepos.split(",")
 
 
 def subProduct = SubProduct
 def branchName = Branch
 def jobName = JOB_NAME
 
-
+def allLinux = AllLinux.toBoolean()
+def allWin = AllWindows.toBoolean()
 
 
 def osReposMaps = [
         "dev": [
-                "Linux": ["cas-xxx"
-                ]
+                "Linux": ["xxx-xxx",
+                ],
+                "Win": ["cas-gmscanner","cas-delegator","cas-scanner"]
         ]
 
 ]
 
 repos = [
 
-        "cas-xxx": [
+        "base": [
                 "type": "GIT",
                 "branch": branchName,
-                "subDir": "${branchName}/cas-xxx",
+                "subDir": "${branchName}/cas-codescan",
                 "subModules": [],
-                "url": "git@xxx.github.xxx.com:Foundation-CAS/cas-xxx.git",
-                "credential": "tmcas-selfci-ssh-key"
-        ],
-		[]
-
+                "url": "git@xxx.github.xxx.com:Foundation-CAS/cas-codescan.git",
+                "credential": "ssh-key"
+        ]
 ]
 
 
 
-echo(python.toString())
-echo(nodejs.toString())
-echo(java.toString())
-echo(go.toString())
-echo(Cpp.toString())
-echo(csharp.toString())
-echo(php.toString())
+echo(linuxRepos.toString())
+echo(windowsRepos.toString())
 
 def nodeName(osType){
 	if(osType == 'Linux'){
@@ -61,8 +49,6 @@ def nodeName(osType){
 
 
 def targetOsReposMaps = [:] as Map
-allrepos = [] as List
-
 
 timestamps {
     stage("node-repos assignment") {
@@ -70,55 +56,22 @@ timestamps {
             echo("The previous stage failed. Skip the current stage.")
             return
         }
-        targetOsReposMaps[nodeName('Linux')] = ['base']
-        if(python.size() > 0){
-            python.each {
+        if(linuxRepos.size() > 0){
+            targetOsReposMaps[nodeName('Linux')] = ['base']
+            linuxRepos.each {
             targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-		        }
+		    }
         }
-        if(nodejs.size() > 0){
-            nodejs.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-            }
-        }
-        if(java.size() > 0){
-            java.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-            }
-        }
-        if(Cpp.size() > 0){
-            Cpp.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-            }
-        }
-        if(csharp.size() > 0){
-            csharp.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-            }
-        }
-        if(php.size() > 0){
-            php.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
-            }
-        }
-        if(go.size() > 0){
-            go.each {
-            targetOsReposMaps[nodeName('Linux')].add(it)
-            allrepos.add(it)
+        if(windowsRepos.size() > 0){
+            targetOsReposMaps[nodeName('Win')] = ['base']
+            windowsRepos.each {
+            targetOsReposMaps[nodeName('Win')].add(it)
             }
         }
 
-		echo(targetOsReposMaps[nodeName('Linux')].toString())
+		echo(targetOsReposMaps.toString())
     }
 }
-
-allrepostring = allrepos.join(',')
 
 
 def generateTask(nodeName,targetOsReposMaps,branchName){
@@ -168,7 +121,10 @@ timestamps {
 
 def ostypeCMD(nodeName){
 	if(nodeName == 'CDC-CAS-CodeScan-Linux-02'){
-		sh(script: "python /home/jenkinsbuild/fortify_codescan/workspace/TMCAS/CAS-codescan/cas-blackduck/dev/cas-codescan/blackduck_codescan/bin/blackduck_codescan.py -d ${allrepostring}")
+		sh(script: "python $pa/CAS-codescan/cas-fortify/dev/cas-codescan/fortify_codescan/bin/fortify_codescan.py -d ${linuxRepos}")
+	}
+	if(nodeName == 'CDC-CAS-CodeScan-Win-01'){
+		bat(script: "python d:/ci-jenkins/workspace/TMCAS/CAS-codescan/cas-fortify/dev/cas-codescan/fortify_codescan/bin/fortify_codescan.py -d ${windowsRepos}")
 	}
 }
 
@@ -213,27 +169,19 @@ def sendMailNotifcations(String buildStatus = 'STARTED') {
     buildStatus = buildStatus ?: 'SUCCESS'
 
     // Default values
-    def subject = "[CodeScan]CAS BlackDuck Scan results upladed: ${buildStatus} "
+    def subject = "[CodeScan]CAS Fortify Scan results upladed: ${buildStatus} "
     def mail_body = '''
         <head>
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
         <body>
         <div id="container">
-        <p><strong>BlackDuck CodeScan results has uploaded:</strong></p>
+        <p><strong>Fortify CodeScan results has uploaded:</strong></p>
         <div id="content">
         <p>This scan includes the following repo(s):</p>
-        <p>
-        python : ${python} <br />
-        nodejs : ${nodejs} <br />
-        java : ${java} <br />
-        Cpp : ${Cpp} <br />
-        csharp : ${csharp} <br />
-        php : ${php} <br />
-        go : ${go} <br />
-        </p>
-
-
-        <p><strong>BlackDuck Service page : https://blackduck.xxx.com/ </strong></p>
+        <p>${linuxRepos} </p>
+        <p>${windowsRepos} </p>
+        <p><strong>Fortify SSC Service : https://ssc.xxx.com/ssc/ </strong></p>
+        <p>Use your Trend Domain account to logon to the SSC page with DUO verification and check your repos scan status </p>
 
         </div>
         </div>
@@ -250,7 +198,7 @@ def sendMailNotifcations(String buildStatus = 'STARTED') {
             attachLog: false,
             compressLog: false,
             recipientProviders: [[$class: 'RequesterRecipientProvider']],
-            to: 'Developers@xxx.com,op@xx.xxx.com'
+            to: ''
     )
 }
 
